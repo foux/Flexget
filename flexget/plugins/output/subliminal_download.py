@@ -5,6 +5,7 @@ from flexget.plugin import register_plugin, DependencyError
 from babelfish.language import Language
 import locale
 import os
+import subliminal
 
 log = logging.getLogger("subliminal_download");
 
@@ -38,17 +39,12 @@ class SubliminalDownload(object):
     }
     
     def on_task_start(self, task, config):
-        try:
-            import subliminal
-        except ImportError as e:
-            log.debug('Error importing subliminal : %s' % e)
-            raise DependencyError('subliminal', 'subliminal', 'Subliminal module required for this task')
+        pass
         
     def on_task_output(self, task, config):
-        import subliminal
-        languages = {
+        languages = [
             Language(list(locale.getdefaultlocale())[1][0:2])
-        }
+        ]
         for entry in task.accepted:
             if not entry['location']:
                 entry.reject('no location for entry')
@@ -60,13 +56,15 @@ class SubliminalDownload(object):
                 if videos is None:
                     entry.reject('No videos found in entry')
                 else:
+                    if not "languages" in config:
+                        config = languages
                     subtitles = subliminal.download_best_subtitles(videos,
                                                                    config['languages'],
                                                                    config['accepted_providers'],
                                                                    provider_configs=None,
                                                                    min_score=config['minimum_score'],
                                                                    hearing_impaired=config['hearing_impaired'])
-                    
+                    subliminal.save_subtitles(subtitles)
                 
     
 register_plugin(SubliminalDownload, "subliminal_download", api_ver=2)
